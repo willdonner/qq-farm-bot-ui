@@ -9,6 +9,6 @@ services:
       ADMIN_PASSWORD: admin
       TZ: Asia/Shanghai
     ports:
-      - "3000:3000"
+      - "3005:3005"
     volumes:
       - ./data:/app/core/data
