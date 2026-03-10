@@ -110,8 +110,8 @@ ADMIN_PASSWORD='你的强密码' pnpm dev:core
 ```
 
 启动后访问面板：
-- 本机：`http://localhost:3005`
-- 局域网：`http://<你的IP>:3005`
+- 本机：`http://localhost:3004`
+- 局域网：`http://<你的IP>:3004`
 
 ---
 
