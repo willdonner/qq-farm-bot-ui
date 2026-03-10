@@ -58,7 +58,7 @@ COPY --from=builder /app/core ./
 COPY --from=builder /app/web/dist ../web/dist
 
 # Expose port
-EXPOSE 3004
+EXPOSE 3005
 
 # Start command
 CMD ["node", "client.js"]
