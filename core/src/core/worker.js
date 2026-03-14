@@ -8,7 +8,7 @@ const { getLevelExpProgress } = require('../config/gameConfig');
 const { getAutomation, getPreferredSeed, getConfigSnapshot, applyConfigSnapshot } = require('../models/store');
 const { checkAndClaimEmails } = require('../services/email');
 const { getEmailDailyState } = require('../services/email');
-const { checkFarm, startFarmCheckLoop, stopFarmCheckLoop, refreshFarmCheckLoop, getLandsDetail, getAvailableSeeds, runFarmOperation, runFertilizerByConfig } = require('../services/farm');
+const { checkFarm, startFarmCheckLoop, stopFarmCheckLoop, refreshFarmCheckLoop, getLandsDetail, getAvailableSeeds, runFarmOperation, runSingleLandOperation, runFertilizerByConfig } = require('../services/farm');
 const { checkFriends, startFriendCheckLoop, stopFriendCheckLoop, refreshFriendCheckLoop, getFriendsList, getFriendLandsDetail, doFriendOperation } = require('../services/friend');
 const { getInteractRecords, extractFriendsFromInteractRecords } = require('../services/interact');
 const { processInviteCodes } = require('../services/invite');
@@ -26,7 +26,7 @@ const { sellAllFruits, getBag, getBagItems, openFertilizerGiftPacksSilently } = 
 const { connect, reconnect, cleanup, getWs, getUserState, networkEvents } = require('../utils/network');
 const { loadProto } = require('../utils/proto');
 const { setLogHook, log, toNum } = require('../utils/utils');
-const { validateAutomation, validateIntervals, validateQuietHours } = require('../services/config-validator');
+const { validateAutomation, validateIntervals, validateQuietHours, validateBlockLevel } = require('../services/config-validator');
 
 if (parentPort && workerData && workerData.accountId && !process.env.FARM_ACCOUNT_ID) {
     process.env.FARM_ACCOUNT_ID = String(workerData.accountId);
@@ -230,7 +230,12 @@ async function runFarmTick(auto) {
         if (auto.task) await checkAndClaimTasks();
         if (auto.email) await checkAndClaimEmails();
         if (auto.fertilizer_gift) await openFertilizerGiftPacksSilently();
-        if (auto.fertilizer_buy) await autoBuyOrganicFertilizer();
+        if (auto.fertilizer_buy) await autoBuyOrganicFertilizer(false, {
+            type: auto.fertilizer_buy_type,
+            max: auto.fertilizer_buy_max,
+            mode: auto.fertilizer_buy_mode,
+            threshold: auto.fertilizer_buy_threshold,
+        });
     } catch (e) {
         log('系统', `农场调度执行失败: ${e.message}`, { module: 'system', event: 'farm_tick', result: 'error' });
     } finally {
@@ -370,6 +375,9 @@ function applyRuntimeConfig(snapshot, syncNow = false) {
             }
             if (snapshot.intervals) {
                 snapshot.intervals = validateIntervals(snapshot.intervals);
+            }
+            if (snapshot.friendBlockLevel) {
+                snapshot.friendBlockLevel = validateBlockLevel(snapshot.friendBlockLevel);
             }
             if (snapshot.friendQuietHours) {
                 snapshot.friendQuietHours = validateQuietHours(snapshot.friendQuietHours);
@@ -676,6 +684,9 @@ async function handleApiCall(msg) {
             }
             case 'doFarmOp':
                 result = await runFarmOperation(args[0], { automated: false }); // opType
+                break;
+            case 'doSingleLandOp':
+                result = await runSingleLandOperation(args[0] || {});
                 break;
             case 'getAnalytics': {
                 const { getPlantRankings } = require('../services/analytics');
